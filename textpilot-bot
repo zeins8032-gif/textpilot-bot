@@ -1,0 +1,95 @@
+import os
+import logging
+from telegram import (
+    Update,
+    ReplyKeyboardMarkup,
+    KeyboardButton,
+)
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters,
+)
+
+logging.basicConfig(level=logging.INFO)
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_ID = os.getenv("ADMIN_ID")
+
+MENU = ReplyKeyboardMarkup(
+    [
+        [KeyboardButton("✍️ Написать пост")],
+        [KeyboardButton("💰 Продающий текст")],
+        [KeyboardButton("🛍️ Описание товара")],
+        [KeyboardButton("📩 Другая задача")],
+        [KeyboardButton("❌ Отмена")],
+    ],
+    resize_keyboard=True,
+)
+
+
+async def start(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    context.user_data.clear()
+
+    await update.message.reply_text(
+        "Привет! Я TextPilotRuBot 🤖\n\n"
+        "Помогу оформить заявку на создание текста.\n"
+        "Выбери, что тебе нужно:",
+        reply_markup=MENU,
+    )
+
+
+async def handle_message(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE
+):
+    message = update.message
+    text = message.text or ""
+
+    if text == "❌ Отмена":
+        context.user_data.clear()
+        await message.reply_text(
+            "Заявка отменена. Чтобы начать заново, нажми /start"
+        )
+        return
+
+    if "task_type" not in context.user_data:
+        allowed = [
+            "✍️ Написать пост",
+            "💰 Продающий текст",
+            "🛍️ Описание товара",
+            "📩 Другая задача",
+        ]
+
+        if text not in allowed:
+            await message.reply_text(
+                "Выбери услугу с помощью кнопок меню.",
+                reply_markup=MENU,
+            )
+            return
+
+        context.user_data["task_type"] = text
+
+        await message.reply_text(
+            "Опиши задачу подробнее.\n\n"
+            "Например: для кого текст, какая тема "
+            "и какой результат тебе нужен?"
+        )
+        return
+
+    task_type = context.user_data["task_type"]
+    user = update.effective_user
+
+    username = (
+        f"@{user.username}"
+        if user.username
+        else "Нет username"
+    )
+
+    application_text = (
+       
